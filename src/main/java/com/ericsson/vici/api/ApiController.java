@@ -21,22 +21,24 @@ import com.ericsson.vici.api.entities.EiffelEventRepository;
 import com.ericsson.vici.api.entities.Preferences;
 import com.ericsson.vici.api.entities.ReturnData;
 import com.ericsson.vici.api.entities.Settings;
-import com.ericsson.vici.entities.ChildLink;
+import com.ericsson.vici.entities.*;
 import com.ericsson.vici.entities.Cytoscape.*;
 import com.ericsson.vici.entities.Eiffel.Outcome;
-import com.ericsson.vici.entities.Event;
-import com.ericsson.vici.entities.Events;
-import com.ericsson.vici.entities.Link;
 import com.ericsson.vici.entities.Table.Column;
 import com.ericsson.vici.entities.Table.Source;
 import com.ericsson.vici.entities.Vis.Item;
 import com.ericsson.vici.entities.Vis.Plot;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URISyntaxException;
 import java.util.*;
 
 import static com.ericsson.vici.Fetcher.*;
@@ -56,39 +58,11 @@ public class ApiController {
     private static final String TYPE_CULLED = "(Culled)";
     private static final String TYPE_UNKNOWN = "unknown";
 
-    private void setQuantities(Node node, Event event) {
-        Outcome outcome = null;
-        switch (node.getData().getType()) {
-            case TEST_CASE:
-            case TEST_SUITE:
+    private static ObjectMapper objectMapper = new ObjectMapper().configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false).registerModule(new JavaTimeModule());
 
-                if (event.getEiffelEvents().containsKey(FINISHED)) {
-                    outcome = event.getEiffelEvents().get(FINISHED).getData().getOutcome();
-                }
-                if (outcome != null && outcome.getVerdict() != null) {
-                    node.getData().increaseQuantity(outcome.getVerdict());
-                } else {
-                    node.getData().increaseQuantity("INCONCLUSIVE");
-                }
-                break;
-            case ACTIVITY:
-                if (event.getEiffelEvents().containsKey(FINISHED)) {
-                    outcome = event.getEiffelEvents().get(FINISHED).getData().getOutcome();
-                }
-                if (outcome != null && outcome.getConclusion() != null) {
-                    node.getData().increaseQuantity(outcome.getConclusion());
-                } else {
-                    node.getData().increaseQuantity("INCONCLUSIVE");
-                }
-                break;
-            case "EiffelConfidenceLevelModifiedEvent":
-                node.getData().increaseQuantity(event.getEiffelEvents().get(TRIGGERED).getData().getValue());
 
-                break;
-            default:
+    private void setQuantities(Node node, EventData event) {
                 node.getData().increaseQuantity();
-                break;
-        }
     }
 
     private void setRates(Node node) {
@@ -174,29 +148,39 @@ public class ApiController {
     }
 
     @RequestMapping(value = "/api/aggregationGraph", produces = "application/json; charset=UTF-8")
-    public ReturnData aggregationGraph(@RequestBody Preferences preferences) {
+    public ReturnData aggregationGraph(@RequestBody Preferences preferences) throws URISyntaxException {
         Graph graph = new Graph(null);
 
 //        JSONObject jsonObject = new JSONObject(settings);
 //        System.out.println(jsonObject.toString());
 
         Fetcher fetcher = new Fetcher();
-        Events eventsObject = fetcher.getEvents(preferences);
-        HashMap<String, Event> events = eventsObject.getEvents();
+        CDEvents eventsObject = fetcher.fetchEventDatas(preferences);
+        HashMap<String, EventData> events = eventsObject.getEvents();
 
+        try {
+            log.info(objectMapper.writeValueAsString(events));
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
         ArrayList<Element> elements = new ArrayList<>();
 
         HashMap<String, Node> nodes = new HashMap<>();
         HashMap<String, Edge> edges = new HashMap<>();
 
+        log.info("NUMBER OF EVENTS: " + events.size());
+
         // Nodes
-        for (Event event : events.values()) {
-            if (!event.getType().equals(REDIRECT)) {
+        for (EventData event : events.values()) {
+            //if (!event.getType().equals(REDIRECT)) {
                 Node node;
                 if (nodes.containsKey(event.getAggregateOn())) {
                     node = nodes.get(event.getAggregateOn());
+                    node = new Node(new DataNode(event.getAggregateOn(), event.getType(), event.getType(), null, 0));
+                    node.getData().getInfo().put("Type", event.getType());
+                    nodes.put(event.getId(), node);
                 } else {
-                    node = new Node(new DataNode(event.getAggregateOn(), event.getAggregateOn(), event.getType(), null, 0));
+                    node = new Node(new DataNode(event.getAggregateOn(), event.getType(), event.getType(), null, 0));
                     node.getData().getInfo().put("Type", event.getType());
                     nodes.put(event.getAggregateOn(), node);
                 }
@@ -210,24 +194,24 @@ public class ApiController {
 
                 setQuantities(node, event);
             }
-        }
+        //}
 
-        // Edges
-        for (Event event : events.values()) {
-            if (!event.getType().equals(REDIRECT)) {
-                for (Link link : event.getLinks()) {
-                    if (!preferences.getAggregationBannedLinks().contains(link.getType())) {
-                        String target = events.get(getTarget(link.getTarget(), events)).getAggregateOn();
-                        String edgeId = getEdgeId(event.getAggregateOn(), target, link.getType());
-                        if (edges.containsKey(edgeId)) {
-                            edges.get(edgeId).getData().increaseQuantity();
-                        } else {
-                            edges.put(edgeId, new Edge(new DataEdge(edgeId, event.getAggregateOn(), target, edgeId, link.getType())));
-                        }
-                    }
-                }
-            }
-        }
+         //Edges
+//        for (EventData event : events.values()) {
+//            if (!event.getType().equals(REDIRECT)) {
+//                for (Link link : event.getLinks()) {
+//                    if (!preferences.getAggregationBannedLinks().contains(link.getType())) {
+//                        String target = events.get(getCDEventTarget(link.getTarget(), events)).getAggregateOn();
+//                        String edgeId = getEdgeId(event.getAggregateOn(), target, link.getType());
+//                        if (edges.containsKey(edgeId)) {
+//                            edges.get(edgeId).getData().increaseQuantity();
+//                        } else {
+//                            edges.put(edgeId, new Edge(new DataEdge(edgeId, event.getAggregateOn(), target, edgeId, link.getType())));
+//                        }
+//                    }
+//                }
+//            }
+//        }
 
         for (Node node : nodes.values()) {
             setRates(node);
@@ -238,8 +222,12 @@ public class ApiController {
         elements.addAll(edges.values());
 
         graph.setElements(elements);
-
-        return new ReturnData(graph, eventsObject.getTimeCollected());
+        try {
+            log.info("Return Graph: " + nodes.size() + " " + objectMapper.writeValueAsString(graph));
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        return new ReturnData(graph);
     }
 
     private String getEdgeId(String source, String target, String type) {
@@ -247,18 +235,18 @@ public class ApiController {
     }
 
     @RequestMapping(value = "/api/detailedEvents", produces = "application/json; charset=UTF-8")
-    public ReturnData detailedEvents(@RequestBody Preferences preferences) {
+    public ReturnData detailedEvents(@RequestBody Preferences preferences) throws URISyntaxException {
 
         Fetcher fetcher = new Fetcher();
-        Events eventsObject = fetcher.getEvents(preferences);
-        HashMap<String, Event> events = eventsObject.getEvents();
+        CDEvents eventsObject = fetcher.fetchEventDatas(preferences);
+        HashMap<String, EventData> events = eventsObject.getEvents();
 
         ArrayList<HashMap<String, String>> data = new ArrayList<>();
         ArrayList<Column> columns = new ArrayList<>();
 
         HashSet<String> cSet = new HashSet<>();
 
-        for (Event event : events.values()) {
+        for (EventData event : events.values()) {
             if (!event.getType().equals(REDIRECT)) {
                 if (event.getAggregateOn().equals(preferences.getDetailsTargetId())) {
                     HashMap<String, String> row = new HashMap<>();
@@ -275,28 +263,28 @@ public class ApiController {
                         addColumn(row, columns, cSet, "time-" + EXECUTION, String.valueOf(event.getTimes().get(FINISHED) - event.getTimes().get(STARTED)));
                     }
 
-                    switch (event.getType()) {
-                        case TEST_CASE:
-                        case ACTIVITY:
-                        case TEST_SUITE:
-                            if (event.getEiffelEvents().containsKey(FINISHED)) {
-                                Outcome outcome = event.getEiffelEvents().get(FINISHED).getData().getOutcome();
-                                if (outcome.getConclusion() != null) {
-                                    addColumn(row, columns, cSet, "conclusion", outcome.getConclusion());
-                                }
-                                if (outcome.getVerdict() != null) {
-                                    addColumn(row, columns, cSet, "verdict", outcome.getVerdict());
-                                }
-                            }
-
-                            break;
-                        case "EiffelConfidenceLevelModifiedEvent":
-                            addColumn(row, columns, cSet, "result", event.getEiffelEvents().get(TRIGGERED).getData().getValue());
-                            addColumn(row, columns, cSet, "confidence", event.getEiffelEvents().get(TRIGGERED).getData().getName());
-                            break;
-                        default:
-                            break;
-                    }
+//                    switch (event.getType()) {
+//                        case TEST_CASE:
+//                        case ACTIVITY:
+//                        case TEST_SUITE:
+//                            if (event.getCDEvents().containsKey(FINISHED)) {
+////                                Outcome outcome = event.getCDEvents().get(FINISHED).getData().getOutcome();
+////                                if (outcome.getConclusion() != null) {
+////                                    addColumn(row, columns, cSet, "conclusion", outcome.getConclusion());
+////                                }
+////                                if (outcome.getVerdict() != null) {
+////                                    addColumn(row, columns, cSet, "verdict", outcome.getVerdict());
+////                                }
+//                            }
+//
+//                            break;
+//                        case "EiffelConfidenceLevelModifiedEvent":
+//                            addColumn(row, columns, cSet, "result", event.getEiffelEvents().get(TRIGGERED).getData().getValue());
+//                            addColumn(row, columns, cSet, "confidence", event.getEiffelEvents().get(TRIGGERED).getData().getName());
+//                            break;
+//                        default:
+//                            break;
+//                    }
 
                     data.add(row);
                 }
@@ -527,7 +515,7 @@ public class ApiController {
                 }
 
                 graph.increaseInfo("nodeTypes", node.getData().getType());
-                setQuantities(node, event);
+                //setQuantities(node, event);
                 nodes.put(event.getId(), node);
                 if (preferences.isEventChainTimeRelativeXAxis()) {
                     node.setPosition(new Position((int) (node.getData().getTimes().get(TRIGGERED) - graph.getTime().getStart()) / 1000, 0));
@@ -690,6 +678,19 @@ public class ApiController {
         Event event = events.get(target);
         if (event.getType().equals(REDIRECT)) {
             return getTarget(event.getAggregateOn(), events);
+        }
+        return target;
+    }
+
+    public static String getCDEventTarget(String target, HashMap<String, EventData> events) {
+        if (!events.containsKey(target)) {
+            log.info("TARGET NULL");
+            return null;
+        }
+        EventData event = events.get(target);
+        if (event.getType().equals(REDIRECT)) {
+            log.info("TARGET REDIRECT");
+            return getCDEventTarget(event.getAggregateOn(), events);
         }
         return target;
     }

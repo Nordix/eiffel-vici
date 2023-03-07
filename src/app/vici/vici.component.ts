@@ -110,6 +110,7 @@ export class ViciComponent implements OnInit {
 
     // Alternative to console.log, will not print in production build.
     debug(msg: any): void {
+        console.log(msg);
         if (!environment.production) {
             console.log(msg);
         }

@@ -37,6 +37,7 @@ public class EiffelEvent {
         this.links = links;
     }
 
+
     public Meta getMeta() {
         return meta;
     }
