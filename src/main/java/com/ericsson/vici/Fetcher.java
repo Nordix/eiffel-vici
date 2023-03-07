@@ -696,4 +696,60 @@ public class Fetcher {
     }
 
 
+    public CDEvent[] getCDEvents(Preferences preferences){
+        CDEvents CDEvents = null;
+        Pattern pattern = Pattern.compile("^localFile\\[(.+)]$");
+        Matcher matcher = pattern.matcher(preferences.getUrl().trim());
+
+        long eventsFetchedAt = System.currentTimeMillis();
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<CDEvent[]> responseEntity;
+        CDEvent[] cdEvents = null;
+
+        if (matcher.find()) {
+//            System.out.println("Request for local file " + matcher.group(1) + ".json");
+//            responseEntity = restTemplate.getForEntity("http://127.0.0.1:8080/" + matcher.group(1), EiffelEvent[].class);
+
+            ObjectMapper mapper = new ObjectMapper();
+            Resource resource = new ClassPathResource("static/assets/" + matcher.group(1) + ".json");
+            InputStream jsonFileStream;
+
+            try {
+                jsonFileStream = resource.getInputStream();
+                cdEvents = mapper.readValue(jsonFileStream, CDEvent[].class);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            Query query = new Query(null, null, 0, Integer.MAX_VALUE, false, null, true);
+            ObjectMapper mapper = new ObjectMapper();
+            JSONObject queryJson = null;
+            try {
+                queryJson = new JSONObject(mapper.writeValueAsString(query));
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<String> entity = null;
+            if (queryJson != null) {
+                entity = new HttpEntity<>(queryJson.toString(), headers);
+            }
+
+            responseEntity = restTemplate.exchange(preferences.getUrl(), HttpMethod.POST, entity, CDEvent[].class);
+            cdEvents = responseEntity.getBody();
+
+//            MediaType contentType = responseEntity.getHeaders().getContentType();
+//            HttpStatus statusCode = responseEntity.getStatusCode();
+        }
+
+        HashMap<String, EventData> events = new HashMap<>();
+        long timeStart = Long.MAX_VALUE;
+        long timeEnd = Long.MIN_VALUE;
+
+        return cdEvents;
+    }
+
 }

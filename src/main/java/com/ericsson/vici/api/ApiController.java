@@ -23,6 +23,7 @@ import com.ericsson.vici.api.entities.ReturnData;
 import com.ericsson.vici.api.entities.Settings;
 import com.ericsson.vici.entities.*;
 import com.ericsson.vici.entities.Cytoscape.*;
+import com.ericsson.vici.entities.Eiffel.CDEvent;
 import com.ericsson.vici.entities.Eiffel.Outcome;
 import com.ericsson.vici.entities.Table.Column;
 import com.ericsson.vici.entities.Table.Source;
@@ -32,6 +33,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+//import org.graalvm.compiler.phases.graph.PostOrderNodeIterator;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -155,8 +157,10 @@ public class ApiController {
 //        System.out.println(jsonObject.toString());
 
         Fetcher fetcher = new Fetcher();
-        CDEvents eventsObject = fetcher.fetchEventDatas(preferences);
-        HashMap<String, EventData> events = eventsObject.getEvents();
+//        CDEvents eventsObject = fetcher.fetchEventDatas(preferences);
+//        HashMap<String, EventData> events = eventsObject.getEvents();
+
+        CDEvent[] events = fetcher.getCDEvents(preferences);
 
         try {
             log.info(objectMapper.writeValueAsString(events));
@@ -167,55 +171,76 @@ public class ApiController {
 
         HashMap<String, Node> nodes = new HashMap<>();
         HashMap<String, Edge> edges = new HashMap<>();
+        int yPos = 400;
 
-        log.info("NUMBER OF EVENTS: " + events.size());
+        //log.info("NUMBER OF EVENTS: " + events.size());
 
-        // Nodes
-        for (EventData event : events.values()) {
-            //if (!event.getType().equals(REDIRECT)) {
-                Node node;
-                if (nodes.containsKey(event.getAggregateOn())) {
-                    node = nodes.get(event.getAggregateOn());
-                    node = new Node(new DataNode(event.getAggregateOn(), event.getType(), event.getType(), null, 0));
-                    node.getData().getInfo().put("Type", event.getType());
-                    nodes.put(event.getId(), node);
-                } else {
-                    node = new Node(new DataNode(event.getAggregateOn(), event.getType(), event.getType(), null, 0));
-                    node.getData().getInfo().put("Type", event.getType());
-                    nodes.put(event.getAggregateOn(), node);
-                }
-
-                long triggered = event.getTimes().get(TRIGGERED);
-                if (triggered < graph.getTime().getStart()) {
-                    graph.getTime().setStart(triggered);
-                } else if (triggered > graph.getTime().getFinish()) {
-                    graph.getTime().setFinish(triggered);
-                }
-
-                setQuantities(node, event);
-            }
-        //}
-
-         //Edges
-//        for (EventData event : events.values()) {
-//            if (!event.getType().equals(REDIRECT)) {
-//                for (Link link : event.getLinks()) {
-//                    if (!preferences.getAggregationBannedLinks().contains(link.getType())) {
-//                        String target = events.get(getCDEventTarget(link.getTarget(), events)).getAggregateOn();
-//                        String edgeId = getEdgeId(event.getAggregateOn(), target, link.getType());
-//                        if (edges.containsKey(edgeId)) {
-//                            edges.get(edgeId).getData().increaseQuantity();
-//                        } else {
-//                            edges.put(edgeId, new Edge(new DataEdge(edgeId, event.getAggregateOn(), target, edgeId, link.getType())));
-//                        }
-//                    }
-//                }
-//            }
-//        }
-
-        for (Node node : nodes.values()) {
-            setRates(node);
+        for (CDEvent cdEvent: events){
+            String label = cdEvent.getType().replace("dev.cdevents.", "").replace(".0.1.0", "").replace(".", " ");
+            DataNode dataNode = new DataNode(cdEvent.getId(), label, cdEvent.getType() , null);
+            Node node = new Node(dataNode, new Position(0, yPos));
+            nodes.put(cdEvent.getId(), node);
+            graph.getTime().setStart(cdEvent.getTime());
+            graph.getTime().setFinish(cdEvent.getTime());
+            yPos -= 200;
         }
+
+        for (CDEvent cdEvent: events){
+            Link link;
+            if (cdEvent.getLinks().size() > 0) {
+                link = cdEvent.getLinks().get(0);
+                log.info("SOURCE: " + cdEvent.getSource().toString());
+                DataEdge dataEdge = new DataEdge(cdEvent.getType() + "." + cdEvent.getId(), link.getTarget(), cdEvent.getId(), cdEvent.getSource().toString(), cdEvent.getSource().toString());
+                edges.put(cdEvent.getId(), new Edge(dataEdge));
+            }
+        }
+
+//        // Nodes
+//        for (EventData event : events.values()) {
+//            //if (!event.getType().equals(REDIRECT)) {
+//                Node node;
+//                if (nodes.containsKey(event.getAggregateOn())) {
+//                    node = nodes.get(event.getAggregateOn());
+//                    node = new Node(new DataNode(event.getAggregateOn(), event.getType(), event.getType(), null, 0));
+//                    node.getData().getInfo().put("Type", event.getType());
+//                    nodes.put(event.getId(), node);
+//                } else {
+//                    node = new Node(new DataNode(event.getAggregateOn(), event.getType(), event.getType(), null, 0));
+//                    node.getData().getInfo().put("Type", event.getType());
+//                    nodes.put(event.getAggregateOn(), node);
+//                }
+//
+//                long triggered = event.getTimes().get(TRIGGERED);
+//                if (triggered < graph.getTime().getStart()) {
+//                    graph.getTime().setStart(triggered);
+//                } else if (triggered > graph.getTime().getFinish()) {
+//                    graph.getTime().setFinish(triggered);
+//                }
+//
+//                setQuantities(node, event);
+//            }
+//        //}
+//
+//         //Edges
+////        for (EventData event : events.values()) {
+////            if (!event.getType().equals(REDIRECT)) {
+////                for (Link link : event.getLinks()) {
+////                    if (!preferences.getAggregationBannedLinks().contains(link.getType())) {
+////                        String target = events.get(getCDEventTarget(link.getTarget(), events)).getAggregateOn();
+////                        String edgeId = getEdgeId(event.getAggregateOn(), target, link.getType());
+////                        if (edges.containsKey(edgeId)) {
+////                            edges.get(edgeId).getData().increaseQuantity();
+////                        } else {
+////                            edges.put(edgeId, new Edge(new DataEdge(edgeId, event.getAggregateOn(), target, edgeId, link.getType())));
+////                        }
+////                    }
+////                }
+////            }
+////        }
+//
+//        for (Node node : nodes.values()) {
+//            setRates(node);
+//        }
 
         elements.addAll(nodes.values());
 
