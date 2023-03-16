@@ -171,18 +171,23 @@ public class ApiController {
 
         HashMap<String, Node> nodes = new HashMap<>();
         HashMap<String, Edge> edges = new HashMap<>();
-        int yPos = 400;
+        int xPos = 800;
+        int yPos = 0;
 
         //log.info("NUMBER OF EVENTS: " + events.size());
 
         for (CDEvent cdEvent: events){
+            long triggered = cdEvent.getTime();
             String label = cdEvent.getType().replace("dev.cdevents.", "").replace(".0.1.0", "").replace(".", " ");
             DataNode dataNode = new DataNode(cdEvent.getId(), label, cdEvent.getType() , null);
-            Node node = new Node(dataNode, new Position(0, yPos));
+            Node node = new Node(dataNode, new Position(xPos, yPos));
             nodes.put(cdEvent.getId(), node);
-            graph.getTime().setStart(cdEvent.getTime());
-            graph.getTime().setFinish(cdEvent.getTime());
-            yPos -= 200;
+            if (triggered < graph.getTime().getStart()) {
+                    graph.getTime().setStart(triggered);
+                } else if (triggered > graph.getTime().getFinish()) {
+                    graph.getTime().setFinish(triggered);
+                }
+            xPos -= 400;
         }
 
         for (CDEvent cdEvent: events){
@@ -190,7 +195,7 @@ public class ApiController {
             if (cdEvent.getLinks().size() > 0) {
                 link = cdEvent.getLinks().get(0);
                 log.info("SOURCE: " + cdEvent.getSource().toString());
-                DataEdge dataEdge = new DataEdge(cdEvent.getType() + "." + cdEvent.getId(), link.getTarget(), cdEvent.getId(), cdEvent.getSource().toString(), cdEvent.getSource().toString());
+                DataEdge dataEdge = new DataEdge(cdEvent.getType() + "." + cdEvent.getId(), cdEvent.getId(), link.getTarget(), cdEvent.getSource().toString(), cdEvent.getSource().toString());
                 edges.put(cdEvent.getId(), new Edge(dataEdge));
             }
         }

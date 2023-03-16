@@ -662,7 +662,7 @@ export class ViciComponent implements OnInit {
                     // 'ghost-offset-y': 1,
                     // 'ghost-opacity': 0.5,
                     'label': 'data(label)',
-                    'font-size': "16"
+                    'font-size': "8"
                 }
             },
             {
@@ -672,10 +672,10 @@ export class ViciComponent implements OnInit {
                     // 'line-color': '#ccc',
                     'curve-style': 'bezier', // To make sure edge arrows are supported
                     // 'target-arrow-color': '#ccc',
-                    'target-arrow-shape': 'triangle',
+                    'source-arrow-shape': 'triangle',
                     'label': 'data(type)',
                     'text-rotation': 'autorotate',
-                    'font-size': "8"
+                    'font-size': "6"
                 }
             },
 
@@ -834,6 +834,20 @@ export class ViciComponent implements OnInit {
                 }
             },
             {
+                selector: 'node[type ^= "dev.cdevents.change.merged.0.1.0"]',
+                style: {
+                    'shape': 'octagon',
+                    'height': 35,
+                    'width': 35,
+                    'background-color': '#fff',
+                    // Credit: Git Logo by Jason Long is licensed under the Creative Commons Attribution 3.0 Unported License. https://git-scm.com/downloads/logos
+                    'background-image': '/assets/images/Git-Icon-Black.png',
+                    'background-height': '100%',
+                    'background-width': '100%',
+                    'background-position-x': '0px',
+                }
+            },
+            {
                 selector: 'node[type ^= "TestCase"]',
                 style: {
                     'background-color': this.constants.colors.undefined,
@@ -861,6 +875,62 @@ export class ViciComponent implements OnInit {
                     'background-image': function (ele) {
                         return statusImages[ele.data().rates.success][ele.data().rates.fail]
                     },
+                    'background-height': '100%',
+                    'background-width': '100%',
+                }
+            },
+            {
+                selector: 'node[type ^= "dev.cdevents.testsuite.started.0.1.0"]',
+                style: {
+                    'shape': 'roundrectangle',
+                    // 'border-style': 'double', // solid, dotted, dashed, or double.
+                    // 'border-width': '6px', // The size of the node’s border.
+                    'height': 30,
+                    'width': 40,
+                    'background-color': this.constants.colors.undefined,
+                    'background-position-x': '0px',
+                    'background-height': '100%',
+                    'background-width': '100%',
+                }
+            },
+            {
+                selector: 'node[type ^= "dev.cdevents.testsuite.finished.0.1.0"]',
+                style: {
+                    'shape': 'roundrectangle',
+                    // 'border-style': 'double', // solid, dotted, dashed, or double.
+                    // 'border-width': '6px', // The size of the node’s border.
+                    'height': 30,
+                    'width': 40,
+                    'background-color': 'green',
+                    'background-position-x': '0px',
+                    'background-height': '100%',
+                    'background-width': '100%',
+                }
+            },
+            {
+                selector: 'node[type ^= "dev.cdevents.pipelinerun.started.0.1.0"]',
+                style: {
+                    'shape': 'rectangle',
+                    // 'border-style': 'double', // solid, dotted, dashed, or double.
+                    // 'border-width': '6px', // The size of the node’s border.
+                    'height': 30,
+                    'width': 60,
+                    'background-color': this.constants.colors.undefined,
+                    'background-position-x': '0px',
+                    'background-height': '100%',
+                    'background-width': '100%',
+                }
+            },
+            {
+                selector: 'node[type ^= "dev.cdevents.pipelinerun.finished.0.1.0"]',
+                style: {
+                    'shape': 'rectangle',
+                    // 'border-style': 'double', // solid, dotted, dashed, or double.
+                    // 'border-width': '6px', // The size of the node’s border.
+                    'height': 30,
+                    'width': 60,
+                    'background-color': 'green',
+                    'background-position-x': '0px',
                     'background-height': '100%',
                     'background-width': '100%',
                 }
