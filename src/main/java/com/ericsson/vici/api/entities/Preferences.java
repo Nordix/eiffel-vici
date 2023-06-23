@@ -60,6 +60,8 @@ public class Preferences {
     private int streamBaseEvents = 1;
     private long streamRefreshIntervalMs = 2000;
 
+    private String detail = "source";
+
     public Preferences() {
     }
 
@@ -176,4 +178,11 @@ public class Preferences {
     }
 
 
+    public String getDetail() {
+        return detail;
+    }
+
+    public void setDetail(String detail) {
+        this.detail = detail;
+    }
 }

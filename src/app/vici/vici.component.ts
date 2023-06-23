@@ -16,6 +16,7 @@ import {HistoryUnit} from "../history-unit";
 import * as vis from 'vis';
 import {Graph2dOptions} from 'vis';
 import {timer} from 'rxjs/observable/timer';
+import { event } from 'jquery';
 
 // Register cy plugins.
 cytoscape.use(dagre);
@@ -29,6 +30,9 @@ panzoom(cytoscape);
     ]
 })
 export class ViciComponent implements OnInit {
+
+    detailType = "source";
+
     public static VICI_CONSTANTS = {
         views: {
             home: 'home',
@@ -313,8 +317,7 @@ export class ViciComponent implements OnInit {
                         this.aggregationTimeline.destroy();
                     }
                     this.http.post<any>('/api/aggregationGraph', repository.preferences).subscribe(result => {
-                        this.debug(result);
-
+                        //this.debug(result);
                         this.aggregationNodeData = {};
                         for (let nodeData in result.data.elements) {
                             let tmp = result.data.elements[nodeData].data;
@@ -334,7 +337,8 @@ export class ViciComponent implements OnInit {
                             this.aggregationNodeData[tmp.id] = tmp;
                         }
 
-                        // this.debug(this.aggregationNodeData);
+                        //this.debug(this.aggregationNodeData);
+                        this.debug(result.data.elements);
 
                         this.aggregationCy = this.renderCytoscape('aggregation_graph', this.statusImages, this.router, this.constants, this.currentSystem, result.data.elements, repository.preferences, undefined);
 
@@ -398,10 +402,14 @@ export class ViciComponent implements OnInit {
 
                         repository.preferences.detailsTargetId = requestedTarget;
                         this.http.post<any>('/api/detailedEvents', repository.preferences).subscribe(result => {
-                            this.detailsDatatable = this.renderDatatables('details_table', result, requestedSystem);
+                            //this.debug("DEBUG: ")
+                            //this.debug(result);
+//                             this.debug(requestedTarget);
+                            this.detailsDatatable = this.renderDatatables('details_table', result, requestedSystem, requestedTarget);
                             this.cache.details.systemId = requestedSystem;
                             this.cache.details.target = requestedTarget;
                             this.isLoading = false;
+
                         });
                     }
                 }
@@ -562,30 +570,31 @@ export class ViciComponent implements OnInit {
                             this.eventChainTimeline.destroy();
                         }
                         repository.preferences.eventChainTargetId = requestedTarget;
+                        repository.preferences.detail = this.detailType;
                         this.http.post<any>('/api/eventChainGraph', repository.preferences).subscribe(result => {
                             this.debug(result);
 
                             this.eventChainNodeData = {};
                             for (let nodeData in result.data.elements) {
                                 let tmp = result.data.elements[nodeData].data;
-                                this.eventChainNodeData[tmp.id] = tmp;
-
-                                // for(let property in tmp.times){
-                                //     tmp.times.property = tmp.times.property = moment()
-                                // }
-
                                 if (tmp.quantities !== undefined) {
+                                    let tmpTable = [];
                                     for (let property in tmp.quantities) {
-                                        if (tmp.quantities[property] > 0) {
-                                            tmp.result = property;
-                                            break;
-                                        }
+                                        tmpTable.push({
+                                            'key': property,
+                                            'value': tmp.quantities[property],
+                                        })
+                                    }
+                                    if (Object.keys(tmpTable).length !== 0) {
+                                        tmp['table'] = tmpTable;
                                     }
                                 }
+    
+                                this.eventChainNodeData[tmp.id] = tmp;
                             }
                             this.debug(this.eventChainNodeData);
                             this.eventChainCy = this.renderCytoscape('eventchain_graph', this.statusImages, this.router, this.constants, this.currentSystem, result.data.elements, repository.preferences, requestedTarget);
-
+                            this.debug("HERE")
                             this.eventChainCy.on('mouseover', 'node', (evt) => {
                                 if (!this.eventChainLockTooltip) {
                                     this.eventChainHoverNode = evt.target.id();
@@ -619,14 +628,14 @@ export class ViciComponent implements OnInit {
                             });
 
                             // Timeline
-                            this.eventChainTimeline = this.renderTimeline('eventChainTimeline', result.data.time);
+                            //this.eventChainTimeline = this.renderTimeline('eventChainTimeline', result.data.time);
 
 
                             this.cache.eventChain.systemId = requestedSystem;
                             this.cache.eventChain.target = requestedTarget;
 
-                            this.currentAggregationTarget = result.data.targetEvent.aggregateOn;
-                            this.currentDetailsTarget = result.data.targetEvent.aggregateOn;
+                            //this.currentAggregationTarget = result.data.targetEvent.aggregateOn;
+                            //this.currentDetailsTarget = result.data.targetEvent.aggregateOn;
                             this.isLoading = false;
                         });
                     }
@@ -1020,12 +1029,26 @@ export class ViciComponent implements OnInit {
         return cy;
     }
 
-    private renderDatatables(parentDivId: string, data: any, activeSystem: string): any {
+    private renderDatatables(parentDivId: string, data: any, activeSystem: string, activeTarget: string): any {
         $('#' + parentDivId).html('<table id="' + parentDivId + '_dataTableContainer" class="table table-striped table-bordered" cellspacing="0" width="100%"></table>');
         let container = $('#' + parentDivId + '_dataTableContainer');
-
+        //this.debug(data);
         let plotData = data.data;
+        const targetData: any[] = [];
+        var targetType = null;
+        for(let i=0; i < plotData.data.length; i++){
+            if (plotData.data[i].id === activeTarget){
+                this.debug(plotData.data[i].type)
+                targetType = plotData.data[i].type;
+            }
+        }
+        for(let i=0; i < plotData.data.length; i++){
+            if(plotData.data[i].type === targetType){
+                targetData[targetData.length] = plotData.data[i];
+            }
+        }
 
+        //this.debug(targetData);
         if (plotData.data.length !== 0) {
             let preDefColumns = [
                 {
@@ -1045,19 +1068,19 @@ export class ViciComponent implements OnInit {
                     }
                 }
             });
-
+            //data: plotData.data,
             let tmp = container.DataTable({
                 destroy: true,
-                data: plotData.data,
+                data: targetData,
                 columns: columns,
                 scrollY: 'calc(100vh - 15rem)',
                 scrollCollapse: true,
                 lengthMenu: [[20, 200, -1], [20, 200, "All"]],
-                order: [4, 'asc'],
+                order: [5, 'asc'],
 
             });
-
             this.renderer.listen('document', 'click', (event) => {
+                this.debug(event.target.getAttribute("view-event-id"))
                 if (event.target.getAttribute("view-event-id")) {
                     // this.router.navigate(['', activeSystem, this.constants.views.eventChain, event.target.getAttribute("view-person-id")]);
                     this.router.navigate(['', activeSystem, this.constants.views.eventChain, event.target.getAttribute("view-event-id")]);
@@ -1085,6 +1108,7 @@ export class ViciComponent implements OnInit {
             this.updateSystemReferences();
 
             let target = undefined;
+            let targetType = undefined;
             if (this.currentView === this.constants.views.aggregation) {
                 target = this.currentAggregationTarget;
             } else if (this.currentView === this.constants.views.details) {
@@ -1102,6 +1126,21 @@ export class ViciComponent implements OnInit {
 
         $('#historyDropdown').on('show.bs.dropdown', () => {
             this.updateHistoryDates();
+        });
+
+        $('#selectType').on('click', () => {
+            this.debug("TYPE CHANGED")
+            this.detailType = "type";
+        });
+
+        $('#selectSource').on('click', () => {
+            this.debug("Source CHANGED")
+            this.detailType = "source";
+        });
+
+        $('#selectSequence').on('click', () => {
+            this.debug("Sequence CHANGED")
+            this.detailType = "sequence";
         });
 
         // Generating status images for the aggregation graph nodes.

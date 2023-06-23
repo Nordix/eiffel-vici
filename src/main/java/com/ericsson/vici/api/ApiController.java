@@ -29,7 +29,6 @@ import com.ericsson.vici.entities.Table.Column;
 import com.ericsson.vici.entities.Table.Source;
 import com.ericsson.vici.entities.Vis.Item;
 import com.ericsson.vici.entities.Vis.Plot;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -152,111 +151,48 @@ public class ApiController {
     @RequestMapping(value = "/api/aggregationGraph", produces = "application/json; charset=UTF-8")
     public ReturnData aggregationGraph(@RequestBody Preferences preferences) throws URISyntaxException {
         Graph graph = new Graph(null);
-
-//        JSONObject jsonObject = new JSONObject(settings);
-//        System.out.println(jsonObject.toString());
-
         Fetcher fetcher = new Fetcher();
-//        CDEvents eventsObject = fetcher.fetchEventDatas(preferences);
-//        HashMap<String, EventData> events = eventsObject.getEvents();
-
         CDEvent[] events = fetcher.getCDEvents(preferences);
 
-        try {
-            log.info(objectMapper.writeValueAsString(events));
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
-        }
         ArrayList<Element> elements = new ArrayList<>();
 
         HashMap<String, Node> nodes = new HashMap<>();
         HashMap<String, Edge> edges = new HashMap<>();
-        int xPos = 800;
-        int yPos = 0;
 
-        //log.info("NUMBER OF EVENTS: " + events.size());
 
-        for (CDEvent cdEvent: events){
-            long triggered = cdEvent.getTime();
-            String label = cdEvent.getType().replace("dev.cdevents.", "").replace(".0.1.0", "").replace(".", " ");
-            DataNode dataNode = new DataNode(cdEvent.getId(), label, cdEvent.getType() , null);
-            Node node = new Node(dataNode, new Position(xPos, yPos));
-            nodes.put(cdEvent.getId(), node);
+        ArrayList<CDEventData> cdEventData = fetcher.getAggregation(events);
+
+        //Nodes
+        for (CDEventData eventData : cdEventData){
+            long triggered = eventData.getTime();
+            String label = eventData.getType().replace("dev.cdevents.", "").replace(".0.1.0", "").replace(".", " ");
+            DataNode dataNode = new DataNode(eventData.getId(), label, eventData.getType() , null, eventData.getCdEvents().size(), eventData.getCdEvents().get(0).getSequence());
+            Node node = new Node(dataNode);
+            nodes.put(eventData.getId(), node);
             if (triggered < graph.getTime().getStart()) {
-                    graph.getTime().setStart(triggered);
-                } else if (triggered > graph.getTime().getFinish()) {
-                    graph.getTime().setFinish(triggered);
-                }
-            xPos -= 400;
-        }
-
-        for (CDEvent cdEvent: events){
-            Link link;
-            if (cdEvent.getLinks().size() > 0) {
-                link = cdEvent.getLinks().get(0);
-                log.info("SOURCE: " + cdEvent.getSource().toString());
-                DataEdge dataEdge = new DataEdge(cdEvent.getType() + "." + cdEvent.getId(), cdEvent.getId(), link.getTarget(), cdEvent.getSource().toString(), cdEvent.getSource().toString());
-                edges.put(cdEvent.getId(), new Edge(dataEdge));
+                graph.getTime().setStart(triggered);
+            } else if (triggered > graph.getTime().getFinish()) {
+                graph.getTime().setFinish(triggered);
             }
         }
 
-//        // Nodes
-//        for (EventData event : events.values()) {
-//            //if (!event.getType().equals(REDIRECT)) {
-//                Node node;
-//                if (nodes.containsKey(event.getAggregateOn())) {
-//                    node = nodes.get(event.getAggregateOn());
-//                    node = new Node(new DataNode(event.getAggregateOn(), event.getType(), event.getType(), null, 0));
-//                    node.getData().getInfo().put("Type", event.getType());
-//                    nodes.put(event.getId(), node);
-//                } else {
-//                    node = new Node(new DataNode(event.getAggregateOn(), event.getType(), event.getType(), null, 0));
-//                    node.getData().getInfo().put("Type", event.getType());
-//                    nodes.put(event.getAggregateOn(), node);
-//                }
-//
-//                long triggered = event.getTimes().get(TRIGGERED);
-//                if (triggered < graph.getTime().getStart()) {
-//                    graph.getTime().setStart(triggered);
-//                } else if (triggered > graph.getTime().getFinish()) {
-//                    graph.getTime().setFinish(triggered);
-//                }
-//
-//                setQuantities(node, event);
-//            }
-//        //}
-//
-//         //Edges
-////        for (EventData event : events.values()) {
-////            if (!event.getType().equals(REDIRECT)) {
-////                for (Link link : event.getLinks()) {
-////                    if (!preferences.getAggregationBannedLinks().contains(link.getType())) {
-////                        String target = events.get(getCDEventTarget(link.getTarget(), events)).getAggregateOn();
-////                        String edgeId = getEdgeId(event.getAggregateOn(), target, link.getType());
-////                        if (edges.containsKey(edgeId)) {
-////                            edges.get(edgeId).getData().increaseQuantity();
-////                        } else {
-////                            edges.put(edgeId, new Edge(new DataEdge(edgeId, event.getAggregateOn(), target, edgeId, link.getType())));
-////                        }
-////                    }
-////                }
-////            }
-////        }
-//
-//        for (Node node : nodes.values()) {
-//            setRates(node);
-//        }
+        //Edges
+        for (CDEventData eventData : cdEventData){
+            Link link;
+            if (eventData.getTarget() != null){
+                link = eventData.getTarget();
+                DataEdge dataEdge = new DataEdge(eventData.getType() + "." + eventData.getId(), eventData.getId(), link.getTarget(), eventData.getSource().toString(), eventData.getSource().toString());
+                edges.put(eventData.getId(), new Edge(dataEdge));
+            }
+        }
+
 
         elements.addAll(nodes.values());
 
         elements.addAll(edges.values());
 
         graph.setElements(elements);
-        try {
-            log.info("Return Graph: " + nodes.size() + " " + objectMapper.writeValueAsString(graph));
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
-        }
+
         return new ReturnData(graph);
     }
 
@@ -268,60 +204,26 @@ public class ApiController {
     public ReturnData detailedEvents(@RequestBody Preferences preferences) throws URISyntaxException {
 
         Fetcher fetcher = new Fetcher();
-        CDEvents eventsObject = fetcher.fetchEventDatas(preferences);
-        HashMap<String, EventData> events = eventsObject.getEvents();
+        CDEvent[] events = fetcher.getCDEvents(preferences);
 
+//        CDEvents eventsObject = fetcher.fetchEventDatas(preferences);
+//        HashMap<String, EventData> events = eventsObject.getEvents();
+//
         ArrayList<HashMap<String, String>> data = new ArrayList<>();
         ArrayList<Column> columns = new ArrayList<>();
-
         HashSet<String> cSet = new HashSet<>();
-
-        for (EventData event : events.values()) {
-            if (!event.getType().equals(REDIRECT)) {
-                if (event.getAggregateOn().equals(preferences.getDetailsTargetId())) {
-                    HashMap<String, String> row = new HashMap<>();
-
-                    addColumn(row, columns, cSet, "id", event.getId());
-                    addColumn(row, columns, cSet, "event", event.getAggregateOn());
-                    addColumn(row, columns, cSet, "type", event.getType());
-
-                    for (String keyTime : event.getTimes().keySet()) {
-                        addColumn(row, columns, cSet, "time-" + keyTime, String.valueOf(event.getTimes().get(keyTime)));
-                    }
-
-                    if (event.getTimes().containsKey(STARTED) && event.getTimes().containsKey(FINISHED)) {
-                        addColumn(row, columns, cSet, "time-" + EXECUTION, String.valueOf(event.getTimes().get(FINISHED) - event.getTimes().get(STARTED)));
-                    }
-
-//                    switch (event.getType()) {
-//                        case TEST_CASE:
-//                        case ACTIVITY:
-//                        case TEST_SUITE:
-//                            if (event.getCDEvents().containsKey(FINISHED)) {
-////                                Outcome outcome = event.getCDEvents().get(FINISHED).getData().getOutcome();
-////                                if (outcome.getConclusion() != null) {
-////                                    addColumn(row, columns, cSet, "conclusion", outcome.getConclusion());
-////                                }
-////                                if (outcome.getVerdict() != null) {
-////                                    addColumn(row, columns, cSet, "verdict", outcome.getVerdict());
-////                                }
-//                            }
-//
-//                            break;
-//                        case "EiffelConfidenceLevelModifiedEvent":
-//                            addColumn(row, columns, cSet, "result", event.getEiffelEvents().get(TRIGGERED).getData().getValue());
-//                            addColumn(row, columns, cSet, "confidence", event.getEiffelEvents().get(TRIGGERED).getData().getName());
-//                            break;
-//                        default:
-//                            break;
-//                    }
-
-                    data.add(row);
-                }
-            }
+        for (CDEvent event: events){
+            HashMap<String, String> row = new HashMap<>();
+            addColumn(row, columns, cSet, "id", event.getId());
+            addColumn(row, columns, cSet, "type", event.getType());
+            addColumn(row, columns, cSet, "time", String.valueOf(event.getTime()));
+            addColumn(row, columns, cSet, "source", event.getSource().toString());
+            addColumn(row, columns, cSet, "sequence", event.getSequence());
+            data.add(row);
         }
 
-        return new ReturnData(new Source(columns, data), eventsObject.getTimeCollected());
+
+        return new ReturnData(new Source(columns, data));
     }
 
     private void addColumn(HashMap<String, String> row, ArrayList<Column> columns, HashSet<String> set, String key, String value) {
@@ -332,7 +234,7 @@ public class ApiController {
                     columns.add(new Column("Event", key));
                     break;
                 case "id":
-                    columns.add(new Column("Eiffel ID", key, false));
+                    columns.add(new Column("CDEvent ID", key, false));
                     break;
                 case "type":
                     columns.add(new Column("Type", key));
@@ -352,6 +254,9 @@ public class ApiController {
                 case "time-" + EXECUTION:
                     columns.add(new Column("Execution (ms)", key));
                     break;
+                case "time":
+                    columns.add(new Column("Time", key, true, 1));
+                    break;
                 case "conclusion":
                     columns.add(new Column("Conclusion", key));
                     break;
@@ -363,6 +268,12 @@ public class ApiController {
                     break;
                 case "confidence":
                     columns.add(new Column("Confidence", key));
+                    break;
+                case "source":
+                    columns.add(new Column("Source", key));
+                    break;
+                case "flow":
+                    columns.add(new Column("Flow", key));
                     break;
                 default:
                     columns.add(new Column(key, key));
@@ -727,23 +638,57 @@ public class ApiController {
 
     @RequestMapping(value = "/api/eventChainGraph", produces = "application/json; charset=UTF-8")
     public ReturnData eventChainGraph(@RequestBody Preferences preferences) {
-        if (preferences.getEventChainTargetId().equals("")) {
-            return new ReturnData(new Graph(null));
-        }
-
+        Graph graph = new Graph(null);
         Fetcher fetcher = new Fetcher();
-        Events eventsObject = fetcher.getEvents(preferences);
-        HashMap<String, Event> events = eventsObject.getEvents();
+        CDEvent[] events = fetcher.getCDEvents(preferences);
 
-        if (!events.containsKey(preferences.getEventChainTargetId())) {
-            return new ReturnData(new Graph(null), eventsObject.getTimeCollected());
+        ArrayList<Element> elements = new ArrayList<>();
+
+        HashMap<String, Node> nodes = new HashMap<>();
+        CDEvent target = null;
+
+        for(CDEvent event : events){
+            if(event.getId().equals(preferences.getEventChainTargetId())){
+                target = event;
+            }
         }
 
-        Event mainEvent = events.get(preferences.getEventChainTargetId());
-        ArrayList<Event> baseEvents = new ArrayList<>();
-        baseEvents.add(mainEvent);
+        ArrayList<CDEvent> eventByDetail = fetcher.getEventsByDetail(preferences.getDetail(), events, target);
+        ArrayList<CDEventData> cdEventData = fetcher.getAggregation(eventByDetail.toArray(new CDEvent[0]));
 
-        return new ReturnData(getChainGraph(preferences, baseEvents, events, mainEvent), eventsObject.getTimeCollected());
+        //Nodes
+        for (CDEventData eventData : cdEventData){
+            long triggered = eventData.getTime();
+            String label = eventData.getType().replace("dev.cdevents.", "").replace(".0.1.0", "").replace(".", " ");
+            DataNode dataNode = new DataNode(eventData.getId(), label, eventData.getType() , null, eventData.getCdEvents().size(), eventData.getCdEvents().get(0).getSequence());
+            Node node = new Node(dataNode);
+            nodes.put(eventData.getId(), node);
+            if (triggered < graph.getTime().getStart()) {
+                graph.getTime().setStart(triggered);
+            } else if (triggered > graph.getTime().getFinish()) {
+                graph.getTime().setFinish(triggered);
+            }
+        }
+
+        if(preferences.getDetail().equals("sequence")) {
+            //Edges
+            HashMap<String, Edge> edges = new HashMap<>();
+            for (CDEventData eventData : cdEventData){
+                Link link;
+                if (eventData.getTarget() != null){
+                    link = eventData.getTarget();
+                    DataEdge dataEdge = new DataEdge(eventData.getType() + "." + eventData.getId(), eventData.getId(), link.getTarget(), eventData.getSource().toString(), eventData.getSource().toString());
+                    edges.put(eventData.getId(), new Edge(dataEdge));
+                }
+            }
+            elements.addAll(edges.values());
+        }
+
+        elements.addAll(nodes.values());
+
+        graph.setElements(elements);
+
+        return new ReturnData(graph);
     }
 
 //    @RequestMapping(value = "/api/liveEventChainGraph", produces = "application/json; charset=UTF-8")

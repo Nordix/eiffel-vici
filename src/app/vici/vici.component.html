@@ -27,6 +27,23 @@
             </li>
 
         </ul>
+        <ul class="navbar-nav w-50">
+
+            <li class="nav-item">
+                <div ngbDropdown class="d-inline-block">
+                    <button class="btn btn-outline-primary" id="dropdownBasic2" ngbDropdownToggle>
+                        Select a Field
+                    </button>
+                    <div ngbDropdownMenu aria-labelledby="dropdownBasic2">
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" id="selectType"> Type </a>
+                        <a class="dropdown-item" id="selectSource"> Source </a>
+                        <a class="dropdown-item" id="selectSequence"> Sequence </a>
+                    </div>
+                </div>
+            </li>
+
+        </ul>
         <ul class="navbar-nav w-100 justify-content-center">
 
             <li class="nav-item">
@@ -425,8 +442,8 @@
     <div id="aggregation_graph" class="cy"></div>
 
     <div *ngIf="aggregationHoverNode!==undefined && aggregationNodeData !== undefined && aggregationNodeData[aggregationHoverNode] !== undefined"
-         class="card border-dark mb-3 cy-tooltip" style="max-width: 18rem;">
-        <div class="card-header">{{aggregationHoverNode}}
+         class="card border-dark mb-3 cy-tooltip" style="max-width: 36rem;">
+        <div class="card-header"> <h1 style="font-size: 20"><b>{{aggregationNodeData[aggregationHoverNode].sequence}}</b></h1>
             <button *ngIf="aggregationLockTooltip" type="button" class="close" aria-label="Close"
                     (click)="router.navigate(['', currentSystem, currentView, constants.params.undefined])">
                 <span aria-hidden="true">&times;</span>
@@ -436,7 +453,7 @@
 
             <!--<h5 class="card-title">Dark card title</h5>-->
             <p class="card-text">Containing {{aggregationNodeData[aggregationHoverNode].quantity}}
-                {{aggregationNodeData[aggregationHoverNode].info.Type}} events.</p>
+                {{aggregationNodeData[aggregationHoverNode].type}} events.</p>
 
             <table *ngIf="aggregationNodeData[aggregationHoverNode].table !== undefined"
                    class="table table-sm">

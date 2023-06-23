@@ -32,10 +32,10 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
+import sun.awt.X11.XSystemTrayPeer;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,11 +43,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.ericsson.vici.ViciApplication.log;
-import static com.ericsson.vici.api.ApiController.getCDEventTarget;
 import static com.ericsson.vici.api.ApiController.getTarget;
-import static com.ericsson.vici.entities.Event.*;
 import static com.ericsson.vici.entities.Event.REDIRECT;
-import static com.ericsson.vici.entities.EventData.*;
 import static com.ericsson.vici.entities.EventData.CANCELED;
 import static com.ericsson.vici.entities.EventData.FINISHED;
 import static com.ericsson.vici.entities.EventData.STARTED;
@@ -69,7 +66,7 @@ public class Fetcher {
     private static HashMap<String, CDEventCache>  cdEventCaches = new HashMap<>();
     private static ObjectMapper objectMapper = new ObjectMapper().configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false).registerModule(new JavaTimeModule());
 
-
+    private int beforeCheck = 0;
     public Fetcher() {
     }
 
@@ -748,8 +745,125 @@ public class Fetcher {
         HashMap<String, EventData> events = new HashMap<>();
         long timeStart = Long.MAX_VALUE;
         long timeEnd = Long.MIN_VALUE;
+        HashMap<String,String> flowNames = new HashMap<String, String>();
+        for(CDEvent event: cdEvents){
+            if(flowNames.get(getFlow(event, cdEvents).toString()) == null){
+                int flowNumber = flowNames.size()+1;
+                flowNames.put(getFlow(event, cdEvents).toString(), "Sequence " + flowNumber);
+            }
+            event.setSequence(flowNames.get(getFlow(event, cdEvents).toString()));
+        }
 
         return cdEvents;
     }
 
+    public ArrayList<CDEventData> getAggregation(CDEvent[] events) {
+        ArrayList<CDEventData> cdEventData = new ArrayList<CDEventData>();
+        boolean aggregateOn = false;
+
+        for(CDEvent cdEvent: events){
+            for(CDEventData data : cdEventData){
+                if(getFlow(data.getCdEvents().get(0), events).equals(getFlow(cdEvent, events))){
+                    if(data.getType().equals(cdEvent.getType())) {
+                        aggregateOn = true;
+                        data.addEvent(cdEvent);
+                    }
+                }
+                else
+                    aggregateOn = false;
+            }
+            if(!aggregateOn){
+                cdEventData.add(new CDEventData(cdEvent));
+            }
+        }
+        //aggregateOn = true;
+        //data.addEvent(cdEvent);
+        return cdEventData;
+    }
+
+    public String getTargetType(String targetID, CDEvent[] events){
+        String targetType = "";
+        for(CDEvent cdEvent: events){
+            if (cdEvent.getId().equals(targetID)){
+                targetType = cdEvent.getType();
+            }
+        }
+        return targetType;
+    }
+
+    public String getAfterFlow(CDEvent cdEvent, CDEvent[] cdEvents) {
+        String flow = "";
+        flow += cdEvent.getType() + ",";
+        for (CDEvent event : cdEvents) {
+            if(event.getLinks().size() > 0) {
+                if (event.getLinks().get(0).getTarget().equals(cdEvent.getId())) {
+                    flow += getAfterFlow(event, cdEvents);
+                }
+            }
+        }
+        return flow;
+    }
+
+    public String getBeforeFlow(CDEvent cdEvent, CDEvent[] cdEvents){
+        String before = "";
+        before += cdEvent.getType() + ",";
+        //log.info(cdEvent.getType());
+        for (CDEvent event : cdEvents) {
+            if(cdEvent.getLinks().size() > 0) {
+                if(event.getId().equals(cdEvent.getLinks().get(0).getTarget())) {
+//                    if(beforeCheck == 0){
+//                        before += event.getSource().toString();
+//                    }
+//                    beforeCheck++;
+                    before += getBeforeFlow(event, cdEvents);
+                }
+            }
+            else{
+                before += cdEvent.getSource().toString();
+            }
+        }
+        return before;
+    }
+
+    public ArrayList<String> getFlow(CDEvent cdEvent, CDEvent[] cdEvents){
+        beforeCheck = 0;
+        String[] before = getBeforeFlow(cdEvent, cdEvents).split(",");
+        String[] after = getAfterFlow(cdEvent, cdEvents).split(",");
+        ArrayList<String> flow = new ArrayList<String>();
+        for(int i = before.length-1; i >= 0; i--){
+            flow.add(before[i]);
+        }
+        for(String type: after){
+            if(!type.equals(after[0]))
+                flow.add(type);
+        }
+        return flow;
+    }
+
+    public ArrayList<CDEvent> getEventsByDetail(String detail, CDEvent[] cdEvents, CDEvent target){
+        ArrayList<CDEvent> detailEvents = new ArrayList<CDEvent>();
+        switch (detail){
+            case "source":
+                for(CDEvent event: cdEvents){
+                    if(event.getSource().toString().equals(target.getSource().toString())){
+                        detailEvents.add(event);
+                    }
+                }
+                break;
+            case "type":
+                for(CDEvent event: cdEvents){
+                    if(event.getType().equals(target.getType().toString())){
+                        detailEvents.add(event);
+                    }
+                }
+                break;
+            case "sequence":
+                for(CDEvent event: cdEvents){
+                    if (event.getSequence().equals(target.getSequence())){
+                        detailEvents.add(event);
+                    }
+                }
+        }
+        return detailEvents;
+    }
 }

@@ -13,4 +13,5 @@ export class Preferences {
     eventChainTimeRelativeXAxis: boolean;
     streamBaseEvents: number;
     streamRefreshIntervalMs: number;
+    detail: string;
 }

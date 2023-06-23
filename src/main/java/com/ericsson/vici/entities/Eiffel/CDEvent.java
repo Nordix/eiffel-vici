@@ -14,6 +14,8 @@ public class CDEvent {
     private Long time;
     private ArrayList<Link> links;
 
+    private String Sequence;
+
     public CDEvent(String id, URI source, String type, Long time, ArrayList<Link> links) {
         this.id = id;
         this.source = source;
@@ -63,5 +65,13 @@ public class CDEvent {
 
     public void setLinks(ArrayList<Link> links) {
         this.links = links;
+    }
+
+    public String getSequence() {
+        return Sequence;
+    }
+
+    public void setSequence(String sequence) {
+        this.Sequence = sequence;
     }
 }

@@ -33,6 +33,21 @@ public class DataNode {
     private HashMap<String, String> info;
     private HashMap<String, Long> times;
 
+    private String sequence;
+
+    public DataNode(String id, String label, String type, String value, int quantity, String sequence) {
+        this.id = id;
+        this.label = label;
+        this.type = type;
+        this.quantity = quantity;
+        this.value = value;
+        this.quantities = new HashMap<>();
+        this.info = new HashMap<>();
+        this.times = new HashMap<>();
+        this.rates = null;
+        this.sequence = sequence;
+    }
+
     public DataNode(String id, String label, String type, String value, int quantity) {
         this.id = id;
         this.label = label;
@@ -140,5 +155,13 @@ public class DataNode {
 
     public void setRates(Rates rates) {
         this.rates = rates;
+    }
+
+    public String getSequence() {
+        return sequence;
+    }
+
+    public void setSequence(String sequence) {
+        this.sequence = sequence;
     }
 }
