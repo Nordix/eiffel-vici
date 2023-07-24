@@ -74,4 +74,16 @@ public class CDEvent {
     public void setSequence(String sequence) {
         this.Sequence = sequence;
     }
+
+    @Override
+    public String toString() {
+        return "CDEvent{" +
+                "id='" + id + '\'' +
+                ", source=" + source +
+                ", type='" + type + '\'' +
+                ", time=" + time +
+                ", links=" + links +
+                ", Sequence='" + Sequence + '\'' +
+                '}';
+    }
 }

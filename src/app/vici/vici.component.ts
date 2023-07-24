@@ -304,7 +304,6 @@ export class ViciComponent implements OnInit {
         return timeline;
     }
 
-
     private changeView(requestedSystem: string, requestedView: string, requestedTarget: string): void {
         if (requestedView === this.constants.views.aggregation) {
             if (requestedSystem !== undefined) {
@@ -316,6 +315,7 @@ export class ViciComponent implements OnInit {
                     if (this.aggregationTimeline !== undefined) {
                         this.aggregationTimeline.destroy();
                     }
+                    this.debug("repository.preferences " + repository.preferences.url)
                     this.http.post<any>('/api/aggregationGraph', repository.preferences).subscribe(result => {
                         //this.debug(result);
                         this.aggregationNodeData = {};
@@ -338,7 +338,7 @@ export class ViciComponent implements OnInit {
                         }
 
                         //this.debug(this.aggregationNodeData);
-                        this.debug(result.data.elements);
+                        this.debug("aggregationGraph result ==> "+result.data.elements);
 
                         this.aggregationCy = this.renderCytoscape('aggregation_graph', this.statusImages, this.router, this.constants, this.currentSystem, result.data.elements, repository.preferences, undefined);
 

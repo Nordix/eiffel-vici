@@ -46,4 +46,12 @@ public class Link {
     public void setType(String type) {
         this.type = type;
     }
+
+    @Override
+    public String toString() {
+        return "Link{" +
+                "target='" + target + '\'' +
+                ", type='" + type + '\'' +
+                '}';
+    }
 }

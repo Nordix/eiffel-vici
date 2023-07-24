@@ -29,16 +29,22 @@ import com.ericsson.vici.entities.Table.Column;
 import com.ericsson.vici.entities.Table.Source;
 import com.ericsson.vici.entities.Vis.Item;
 import com.ericsson.vici.entities.Vis.Plot;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 //import org.graalvm.compiler.phases.graph.PostOrderNodeIterator;
+import io.cloudevents.CloudEvent;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.util.*;
 
@@ -148,6 +154,50 @@ public class ApiController {
         return settingsHandler.getDefaultRepository();
     }
 
+    private static List<CDEvent>  cdEventCacheList = new ArrayList<>();
+    @RequestMapping(value = "/cdevents/visi", produces = "application/json; charset=UTF-8")
+    public ResponseEntity<Void> receiveCDEvent(@RequestBody CloudEvent cdEvent) {
+        ObjectMapper mapper = new ObjectMapper().configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        log.info("cdEventCacheList Before ===> {}", cdEventCacheList );
+        try {
+            String cdEventString = mapper.writeValueAsString(cdEvent);
+            log.info("cdEventString Received===> {}", cdEventString);
+            CDEvent cdEvents = mapper.readValue(cdEventString, CDEvent.class);
+            ArrayList<Link> listLink = new ArrayList();
+            cdEvents.setLinks(listLink);
+            cdEventCacheList.add(cdEvents);
+            int listSize = cdEventCacheList.size();
+            if (listSize > 1) {
+                String prevId = cdEventCacheList.get(listSize-2).getId();
+                log.info("Creating link with prevId ===> {}", prevId);
+                Link link = new Link(prevId, "ACTIVITY_EXECUTION");
+                cdEventCacheList.get(listSize-1).getLinks().add(link);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        log.info("cdEventCacheList After ===> {}", cdEventCacheList );
+
+        return ResponseEntity.ok().build();
+    }
+
+    @RequestMapping(value = "/cdevents/display", produces = "application/json; charset=UTF-8" )
+    public ResponseEntity<List<CDEvent>> readLiveCDEvents(){
+        log.info("in /cdevents/display cdEventCacheList ===> {}", cdEventCacheList );
+        ObjectMapper mapper = new ObjectMapper();
+        Resource resource = new ClassPathResource("static/assets/reference-data-set.json");
+        InputStream jsonFileStream;
+        CDEvent[] cdEvents = null;
+
+        try {
+            jsonFileStream = resource.getInputStream();
+            cdEvents = mapper.readValue(jsonFileStream, CDEvent[].class);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return ResponseEntity.ok(cdEventCacheList);
+    }
     @RequestMapping(value = "/api/aggregationGraph", produces = "application/json; charset=UTF-8")
     public ReturnData aggregationGraph(@RequestBody Preferences preferences) throws URISyntaxException {
         Graph graph = new Graph(null);

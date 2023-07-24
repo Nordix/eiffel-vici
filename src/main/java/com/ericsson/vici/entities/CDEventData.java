@@ -20,7 +20,12 @@ public class CDEventData {
         this.cdEvents.add(cdEvent);
         if (cdEvent.getLinks().size() > 0)
             this.target = cdEvent.getLinks().get(0);
-        this.time = cdEvent.getTime();
+        if(cdEvent.getTime() !=null) {
+            this.time = cdEvent.getTime();
+        } else {
+            this.time = System.currentTimeMillis();
+        }
+
         this.id = cdEvent.getId();
     }
 

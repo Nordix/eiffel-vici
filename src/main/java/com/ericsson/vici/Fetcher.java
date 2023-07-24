@@ -32,7 +32,6 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
-import sun.awt.X11.XSystemTrayPeer;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -735,6 +734,7 @@ public class Fetcher {
                 entity = new HttpEntity<>(queryJson.toString(), headers);
             }
 
+            log.info("URL to invoke for events {}", preferences.getUrl());
             responseEntity = restTemplate.exchange(preferences.getUrl(), HttpMethod.POST, entity, CDEvent[].class);
             cdEvents = responseEntity.getBody();
 
