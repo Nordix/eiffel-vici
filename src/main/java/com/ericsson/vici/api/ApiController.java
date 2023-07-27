@@ -167,7 +167,7 @@ public class ApiController {
             cdEvents.setLinks(listLink);
             cdEventCacheList.add(cdEvents);
             int listSize = cdEventCacheList.size();
-            if (listSize > 1) {
+            if (listSize > 1 && !cdEvents.getType().contains("dev.cdevents.change.merged")) {
                 String prevId = cdEventCacheList.get(listSize-2).getId();
                 log.info("Creating link with prevId ===> {}", prevId);
                 Link link = new Link(prevId, "ACTIVITY_EXECUTION");
