@@ -24,6 +24,13 @@ public class CDEvent {
         this.links = links;
     }
 
+    public CDEvent(String id, URI source, String type, Long time) {
+        this.id = id;
+        this.source = source;
+        this.type = type;
+        this.time = time;
+    }
+
     public CDEvent(){
     }
 

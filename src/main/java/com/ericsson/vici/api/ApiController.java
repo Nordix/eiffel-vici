@@ -160,18 +160,21 @@ public class ApiController {
         ObjectMapper mapper = new ObjectMapper().configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
         log.info("cdEventCacheList Before ===> {}", cdEventCacheList );
         try {
+
             String cdEventString = mapper.writeValueAsString(cdEvent);
             log.info("cdEventString Received===> {}", cdEventString);
-            CDEvent cdEvents = mapper.readValue(cdEventString, CDEvent.class);
+            CDEvent cdEvents = new CDEvent(cdEvent.getId(), cdEvent.getSource(), cdEvent.getType(), cdEvent.getTime().toInstant().toEpochMilli());
             ArrayList<Link> listLink = new ArrayList();
             cdEvents.setLinks(listLink);
             cdEventCacheList.add(cdEvents);
             int listSize = cdEventCacheList.size();
-            if (listSize > 1 && !cdEvents.getType().contains("dev.cdevents.change.merged")) {
-                String prevId = cdEventCacheList.get(listSize-2).getId();
-                log.info("Creating link with prevId ===> {}", prevId);
-                Link link = new Link(prevId, "ACTIVITY_EXECUTION");
-                cdEventCacheList.get(listSize-1).getLinks().add(link);
+            if (listSize > 1) {
+                if(!cdEvents.getType().contains("change.merged") || !cdEvents.getType().contains("pipelinerun.queued")){
+                    String prevId = cdEventCacheList.get(listSize-2).getId();
+                    log.info("Creating link with prevId ===> {}", prevId);
+                    Link link = new Link(prevId, "ACTIVITY_EXECUTION");
+                    cdEventCacheList.get(listSize-1).getLinks().add(link);
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
