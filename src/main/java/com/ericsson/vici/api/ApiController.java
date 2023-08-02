@@ -169,7 +169,7 @@ public class ApiController {
             cdEventCacheList.add(cdEvents);
             int listSize = cdEventCacheList.size();
             if (listSize > 1) {
-                if(!cdEvents.getType().contains("change.merged") || !cdEvents.getType().contains("pipelinerun.queued")){
+                if(!cdEvents.getType().contains("change.merged") && !cdEvents.getType().contains("pipelinerun.queued")){
                     String prevId = cdEventCacheList.get(listSize-2).getId();
                     log.info("Creating link with prevId ===> {}", prevId);
                     Link link = new Link(prevId, "ACTIVITY_EXECUTION");
