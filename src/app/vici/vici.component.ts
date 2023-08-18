@@ -857,6 +857,20 @@ export class ViciComponent implements OnInit {
                 }
             },
             {
+                 selector: 'node[type ^= "cd.change.merged.v1"]',
+                 style: {
+                     'shape': 'octagon',
+                     'height': 35,
+                     'width': 35,
+                     'background-color': '#fff',
+                     // Credit: Git Logo by Jason Long is licensed under the Creative Commons Attribution 3.0 Unported License. https://git-scm.com/downloads/logos
+                     'background-image': '/assets/images/Git-Icon-Black.png',
+                     'background-height': '100%',
+                     'background-width': '100%',
+                     'background-position-x': '0px',
+                 }
+            },
+            {
                 selector: 'node[type ^= "TestCase"]',
                 style: {
                     'background-color': this.constants.colors.undefined,
@@ -943,6 +957,48 @@ export class ViciComponent implements OnInit {
                     'background-height': '100%',
                     'background-width': '100%',
                 }
+            },
+            {
+                            selector: 'node[type ^= "cd.pipelinerun.started.v1"]',
+                            style: {
+                                'shape': 'rectangle',
+                                // 'border-style': 'double', // solid, dotted, dashed, or double.
+                                // 'border-width': '6px', // The size of the node’s border.
+                                'height': 30,
+                                'width': 60,
+                                'background-color': 'green',
+                                'background-position-x': '0px',
+                                'background-height': '100%',
+                                'background-width': '100%',
+                            }
+                        },
+            {
+                            selector: 'node[type ^= "cd.pipelinerun.queued.v1"]',
+                            style: {
+                                'shape': 'rectangle',
+                                // 'border-style': 'double', // solid, dotted, dashed, or double.
+                                // 'border-width': '6px', // The size of the node’s border.
+                                'height': 30,
+                                'width': 60,
+                                'background-color': this.constants.colors.undefined,
+                                'background-position-x': '0px',
+                                'background-height': '100%',
+                                'background-width': '100%',
+                            }
+            },
+                        {
+                            selector: 'node[type ^= "cd.pipelinerun.finished.v1"]',
+                            style: {
+                                'shape': 'rectangle',
+                                // 'border-style': 'double', // solid, dotted, dashed, or double.
+                                // 'border-width': '6px', // The size of the node’s border.
+                                'height': 30,
+                                'width': 60,
+                                'background-color': 'green',
+                                'background-position-x': '0px',
+                                'background-height': '100%',
+                                'background-width': '100%',
+                            }
             },
             {
                 selector: 'node[type $= "(Culled)"]',
