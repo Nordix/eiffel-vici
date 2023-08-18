@@ -163,13 +163,17 @@ public class ApiController {
 
             String cdEventString = mapper.writeValueAsString(cdEvent);
             log.info("cdEventString Received===> {}", cdEventString);
-            CDEvent cdEvents = new CDEvent(cdEvent.getId(), cdEvent.getSource(), cdEvent.getType(), cdEvent.getTime().toInstant().toEpochMilli());
+            Long time = System.currentTimeMillis();
+            if (cdEvent.getTime() != null){
+                time = cdEvent.getTime().toInstant().toEpochMilli();
+            }
+            CDEvent cdEvents = new CDEvent(cdEvent.getId(), cdEvent.getSource(), cdEvent.getType(), time);
             ArrayList<Link> listLink = new ArrayList();
             cdEvents.setLinks(listLink);
             cdEventCacheList.add(cdEvents);
             int listSize = cdEventCacheList.size();
             if (listSize > 1) {
-                if(!cdEvents.getType().contains("change.merged") && !cdEvents.getType().contains("pipelinerun.queued")){
+                if(!cdEvents.getType().contains("change.merged")){
                     String prevId = cdEventCacheList.get(listSize-2).getId();
                     log.info("Creating link with prevId ===> {}", prevId);
                     Link link = new Link(prevId, "ACTIVITY_EXECUTION");
