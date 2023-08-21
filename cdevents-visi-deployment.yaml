@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: cdevents-visi
+  name: cdevents-visi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cdevents-visi
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: cdevents-visi
+    spec:
+      containers:
+      - image: localhost:5000/cdevents/cdevents-visi:latest
+        name: cdevents-visi
+        resources: {}
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: cdevents-visi
+  name: cdevents-visi
+spec:
+  ports:
+  - name: 8080-8080
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: cdevents-visi
+  type: ClusterIP
+status:
+  loadBalancer: {}
