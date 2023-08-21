@@ -966,7 +966,7 @@ export class ViciComponent implements OnInit {
                                 // 'border-width': '6px', // The size of the node’s border.
                                 'height': 30,
                                 'width': 60,
-                                'background-color': 'green',
+                                'background-color': this.constants.colors.undefined,
                                 'background-position-x': '0px',
                                 'background-height': '100%',
                                 'background-width': '100%',
